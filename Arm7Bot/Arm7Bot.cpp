@@ -65,6 +65,7 @@ void Arm7Bot::setStoreData() {
 void Arm7Bot::initialMove() {
   for (int i = 0; i < filterSize; i++) {
     delay(10);
+    receiveCom();
     filterAnalogData();
   }
   calculatePosD();
@@ -72,7 +73,7 @@ void Arm7Bot::initialMove() {
     pos[i] = posD[i];
     posS[i] = pos[i];
   }
-  delay(200);
+  // delay(200);
   for (int i = 0; i < 7; i++) Servos[i].attach( 2 + i, 90, 2500);
   for (int i = 0; i < SERVO_NUM; i++)
     isConverge[i] = false;
@@ -86,6 +87,7 @@ void Arm7Bot::initialMove() {
   while ( !allConverge() ) {
     moveOneStep();
     delay(10);
+    receiveCom();
   }
   maxSpeed[0] = 80; 
   maxSpeed[1] = 100; 
