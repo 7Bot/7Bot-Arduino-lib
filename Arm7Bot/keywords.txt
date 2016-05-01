@@ -1,0 +1,53 @@
+#######################################
+# Syntax Coloring Map For 7Bot
+#######################################
+
+#######################################
+# Class (KEYWORD1)
+#######################################
+Arm7Bot	KEYWORD1	Arm7Bot
+ForceFilter	KEYWORD1	ForceFilter
+MedianFilter	KEYWORD1	MedianFilter
+PressFilter	KEYWORD1	PressFilter
+PVector	KEYWORD1	PVector
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+# Arm7Bot Class
+initialMove	KEYWORD2
+readMode	KEYWORD2
+stopMode	KEYWORD2
+move	KEYWORD2
+allConverge	KEYWORD2
+
+## 7Bot Software System
+softwareSystem	KEYWORD2
+
+# Common Filter methods
+filter	KEYWORD2
+
+# PVector methods
+add	KEYWORD2
+normalize	KEYWORD2
+dot	KEYWORD2
+dist	KEYWORD2
+
+#######################################
+# Properties (KEYWORD3)
+#######################################
+isFluent	KEYWORD3
+offset	KEYWORD3
+maxSpeed	KEYWORD3
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+BAUD_RATE	LITERAL1
+INITIAL_POS	LITERAL1
+SERVO_NUM	LITERAL1
+BUTTON_NUM	LITERAL1
+
+
+
