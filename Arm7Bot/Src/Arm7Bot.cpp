@@ -89,9 +89,9 @@ void Arm7Bot::initialMove() {
     delay(10);
     receiveCom();
   }
-  maxSpeed[0] = 80; 
-  maxSpeed[1] = 100; 
-  maxSpeed[2] = 100; 
+  maxSpeed[0] = 120; 
+  maxSpeed[1] = 120; 
+  maxSpeed[2] = 120; 
   maxSpeed[3] = 200; 
   maxSpeed[4] = 200; 
   maxSpeed[5] = 200; 
