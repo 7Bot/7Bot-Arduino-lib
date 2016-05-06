@@ -3,7 +3,7 @@
 /* Author: Jerry Peng
 /* Date: 5 May 2016
 /* 
-/* Version 1.00
+/* Version 1.01
 /* www.7bot.cc
 /*  
 /* Description: 
