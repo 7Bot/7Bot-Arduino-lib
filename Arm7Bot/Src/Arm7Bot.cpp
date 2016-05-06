@@ -1,9 +1,9 @@
 /****************************************************
 /* 7Bot class for Arduino platform
 /* Author: Jerry Peng
-/* Date: 26 April 2016
+/* Date: 5 May 2016
 /* 
-/* Version 1.00
+/* Version 1.01
 /* www.7bot.cc
 /*  
 /* Description: 
@@ -12,14 +12,9 @@
 /***************************************************/
 #include "Arm7Bot.h"
 
+
+
 Arm7Bot::Arm7Bot() {
-  maxSpeed[0] = 15;
-  maxSpeed[1] = 20;
-  maxSpeed[2] = 20;
-  maxSpeed[3] = 30;
-  maxSpeed[4] = 30;
-  maxSpeed[5] = 30;
-  maxSpeed[6] = 30;
   // intitialize parameters
   for (int i = 0; i < SERVO_NUM; i++) {
     offset[i] = offsetInit[i];
@@ -28,21 +23,25 @@ Arm7Bot::Arm7Bot() {
     fluentRange[i] = fluentRangeInit[i];
     filterData[i] = 0;
   }
+
   analogWriteResolution(12);  // for Due
+  
   // initalize elements
   btAndBuzInit();
-  suckerInit();
+  vacuumCupInit();
   getStoreData();
   setStoreData();
 }
 
-void Arm7Bot::suckerInit() {
+// Initial vacuum cup
+void Arm7Bot::vacuumCupInit() {
   pinMode(valve_pin, OUTPUT);
   pinMode(pump_pin, OUTPUT);
   digitalWrite(valve_pin, LOW);
   digitalWrite(pump_pin, LOW);
 }
 
+// Read storage data from flash
 void Arm7Bot::getStoreData() {
   int poseCntInit = (int)dueFlashStorage.read(256);
   if (poseCntInit != 255) poseCnt = poseCntInit;
@@ -54,29 +53,33 @@ void Arm7Bot::getStoreData() {
       offset[i] = mul * (offsetRead % 64);
     }
   }
-
 }
 
+// Write some firmware datas to flash (ID:0~254, value:0~127 valid)
 void Arm7Bot::setStoreData() {
   dueFlashStorage.write(0, 7);  // 7Bot
   dueFlashStorage.write(1, 10);  // Verion 1.0
 }
 
+// Motion initial fuction.
+// Read current postion first, and then adjust to the inital postion softly and gradually.
 void Arm7Bot::initialMove() {
+  
   for (int i = 0; i < filterSize; i++) {
     delay(10);
     receiveCom();
     filterAnalogData();
   }
   calculatePosD();
+  
   for (int i = 0; i < SERVO_NUM; i++) {
     pos[i] = posD[i];
     posS[i] = pos[i];
-  }
-  // delay(200);
-  for (int i = 0; i < 7; i++) Servos[i].attach( 2 + i, 90, 2500);
-  for (int i = 0; i < SERVO_NUM; i++)
+    Servos[i].attach( 2 + i, 90, 2500);  // attach servos
     isConverge[i] = false;
+  }
+
+  // Setting initial speeds to low values
   maxSpeed[0] = 15; 
   maxSpeed[1] = 20; 
   maxSpeed[2] = 20; 
@@ -84,21 +87,26 @@ void Arm7Bot::initialMove() {
   maxSpeed[4] = 30; 
   maxSpeed[5] = 30; 
   maxSpeed[6] = 30;
+
+  // Adjust to the inital postion
   while ( !allConverge() ) {
     moveOneStep();
     delay(10);
     receiveCom();
   }
-  maxSpeed[0] = 120; 
-  maxSpeed[1] = 120; 
-  maxSpeed[2] = 120; 
+
+  // Setting running speeds to proper values. Too high may cause unstable.  
+  maxSpeed[0] = 80; 
+  maxSpeed[1] = 100; 
+  maxSpeed[2] = 100; 
   maxSpeed[3] = 200; 
   maxSpeed[4] = 200; 
   maxSpeed[5] = 200; 
   maxSpeed[6] = 200;
 }
 
-void Arm7Bot::readMode() {
+// Set 7Bot to forceless mode, which you can drag 7Bot by hand easily and also read stable pose feedbacks
+void Arm7Bot::forcelessMode() {
   if (Servos[0].attached()) {
     for (int i = 0; i < SERVO_NUM; i++) {
       Servos[i].writeMicroseconds(100);
@@ -108,6 +116,8 @@ void Arm7Bot::readMode() {
   }
 }
 
+// Set 7Bot to stop mode, which you can drag 7Bot by hand but the robot still have some forces.
+// This mode is useful for device protection, robot can be moved by external forces, but still have some resistance.
 void Arm7Bot::stopMode() {
   if (Servos[0].attached()) {
     for (int i = 0; i < SERVO_NUM; i++) {
@@ -118,17 +128,22 @@ void Arm7Bot::stopMode() {
   }
 }
 
+// 7Bot move fuction
+// Given each axis angle(Unit:degrees)
 void Arm7Bot::move(double angles[SERVO_NUM]) {
+  
   for (int i = 0; i < SERVO_NUM; i++) {
     posG[i] = angles[i];
     isConverge[i] = false;
   }
-
+  
+  // move gradually
   while (!allConverge()) {
     moveOneStep();
     delay(20);
   }
 
+  // Compatible with vaccum cap
   if (posG[6] < 30) {
     digitalWrite(valve_pin, LOW);
     digitalWrite(pump_pin, HIGH);
@@ -137,10 +152,12 @@ void Arm7Bot::move(double angles[SERVO_NUM]) {
     digitalWrite(valve_pin, HIGH);
     digitalWrite(pump_pin, LOW);
   }
+  
 }
 
 
-
+// Gradually moving fuction
+// Move one step when this function is called.
 void Arm7Bot::moveOneStep() {
 
   if (!Servos[0].attached()) initialMove();
@@ -150,15 +167,16 @@ void Arm7Bot::moveOneStep() {
     // Speed limitation
     if(maxSpeed[i]>250) maxSpeed[i] = 250;
 
-    double maxStp = maxSpeed[i] / 50; 
+    double maxStp = maxSpeed[i] / 50; // max step change 
     double minStp = maxStp / 10;
-    double decDiff = fluentRange[i] * maxStp; 
-    double accDiff = decDiff / 2; 
+    double decDiff = fluentRange[i] * maxStp; // Decelerate Zone when difference btween posG & pos below this value. Unit: Degree
+    double accDiff = decDiff / 2;  // Accelerate Zone when difference btween posS & pos below this value. Unit: Degree
     isConverge[i] = false;
     double stp = 0;
     double diff = posG[i] - pos[i];
     double diffS = pos[i] - posS[i];
 
+    // Motion without acceleration & deceleration
     if (!isFluent[i]) {
       if (diff > maxStp) stp = maxStp;
       else if (diff < -maxStp) stp = -maxStp;
@@ -168,7 +186,7 @@ void Arm7Bot::moveOneStep() {
         posS[i] = pos[i];
       }
     }
-
+    // Motion with acceleration & deceleration (Linear Speed Change)
     if ( (diff < 0 && diffS > 0) || (diff > 0 && diffS < 0) ) {
       posS[i] = pos[i];
       diffS = pos[i] - posS[i];
@@ -191,7 +209,7 @@ void Arm7Bot::moveOneStep() {
       }
       else {
         stp = 0;
-        isConverge[i] = true;  
+        isConverge[i] = true;  // already converge
         posS[i] = pos[i]; 
       }
     }
@@ -203,6 +221,7 @@ void Arm7Bot::moveOneStep() {
 }
 
 
+// Set PWM ctrl signal to servos
 void Arm7Bot::servoCtrl() {
 
   geometryConstrain();
@@ -224,23 +243,25 @@ void Arm7Bot::servoCtrl() {
 }
 
 
-
+// Geometry constrains
 void Arm7Bot::geometryConstrain() {
   if (pos[1] < 0) {
     pos[1] = 0;
   } else if (pos[1] + pos[2] > 227) {
     pos[1] = 227 - pos[2];
   }
-  if(pos[6]<0){pos[6] = 0;} else if(pos[6]>80){pos[6] = 80;}
+  if(pos[6]<0){pos[6] = 0;} else if(pos[6]>80){pos[6] = 80;} // for gripper
 }
 
-
+// anolog feedback preprocessing fuction
+// Move one step when this function is called.
 void Arm7Bot::filterAnalogData() {
   for (int i = 0; i < SERVO_NUM; i++) {
     filterData[i] = filters[i].filter(analogRead(i));
   }
 }
 
+// Servo pose calculation fuction
 void Arm7Bot::calculateServoPosD() {
   for (int i = 0; i < SERVO_NUM; i++) {
     servoPosD[i] = (double)((filterData[i] - 114)) * 0.21582734;
@@ -253,7 +274,7 @@ void Arm7Bot::calculateServoPosD() {
   }
 }
 
-
+// Structure calculation fuction
 void Arm7Bot::calculatePosD() {
 
   calculateServoPosD();
@@ -299,17 +320,22 @@ void Arm7Bot::sendPosDAndForce() {
 
 }
 
-
+// Motion converge detection fuction
 boolean Arm7Bot::allConverge() {
   return isConverge[0] && isConverge[1] && isConverge[2] && isConverge[3] && isConverge[4] && isConverge[5] && isConverge[6];
 }
 
+// External force estimate 
 void Arm7Bot::calculateForce() {
   for (int i = 0; i < SERVO_NUM; i++) {
     force[i] = forceFilters[i].filter( (int)(pos[i] - posD[i]) );
   }
 }
 
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/* Kinematics */
 
 // Valid range check
 // return: [0]-no error, [1]-some angle out of range, [2]-theta1 & theta2 cosntrain
@@ -321,8 +347,7 @@ int Arm7Bot::angleRangCheck() {
   return 0;
 }
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-/* Kinematics */
+// Calculate model joints
 void Arm7Bot::calcJoints() {
   joint[1] = PVector(joint[0].x, joint[0].y + d, joint[0].z + e);
   joint[2] = PVector(0, -b * cos(theta[2] - 1.134464), b * sin(theta[2] - 1.134464));    joint[2].add(joint[1]);
@@ -448,7 +473,7 @@ int Arm7Bot::IK5(PVector j6, PVector vec56_d) {
 }
 
 // Function: IK, input joint[6], Vector(joint[5] to joint[6] direction) & Vector(joint[6] to joint[7]), calculate theta[0]~[5]
-// return: [0]no error; [1]IK3 out of valid range; [2]IK5-theta4 out of range; [3]IK6-theta5 out of range(!!! now,no 3 return);
+// return: [0]no error; [1]IK3 out of valid range; [2]IK5-theta4 out of range;
 int Arm7Bot::IK6(PVector j6, PVector vec56_d, PVector vec67_d) {
   int status = -1;
   int IK5_status = IK5(j6, vec56_d);
@@ -474,7 +499,7 @@ int Arm7Bot::IK6(PVector j6, PVector vec56_d, PVector vec67_d) {
 
 
 ///////////////////////////////////////////////////////////////////////////////////////
-// UART
+/*  UART Communication with Host(Such as PC) */ 
 
 void Arm7Bot::receiveCom() {
 
@@ -705,9 +730,9 @@ void Arm7Bot::receiveCom() {
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
-// Btn & Buzzer
+/*  Btn & Buzzer */
 
-/* Initialize */
+//  Initialize 
 void Arm7Bot::btAndBuzInit() {
   // Initial Buzzer
   pinMode(buzzer_pin, OUTPUT);
@@ -778,8 +803,14 @@ void Arm7Bot::btDetectionAndBuz() {
 
 }
 
-////////////////////////////////////////////////////////////////////////
-// FSM
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////
+/*  software System */
+
+//  FSM 
 void Arm7Bot::FSMdetector() {
 
   // Status 1
@@ -862,12 +893,10 @@ void Arm7Bot::FSMdetector() {
 
   }
 
-}  // End - FSMdetector()
+} 
 
 
-
-//////////////////////////////////////////////////////////////////////////////////////
-// software System
+// This fuction is design for general usage and software application developments 
 void Arm7Bot::softwareSystem() {
   // UART receiver
   receiveCom();
@@ -897,7 +926,7 @@ void Arm7Bot::softwareSystem() {
 
     //
     if (forceStatus == 0) {
-      readMode();
+      forcelessMode();
     }
     else if (forceStatus == 2) {
       stopMode();
@@ -967,7 +996,7 @@ void Arm7Bot::softwareSystem() {
       if (millis() - time_20ms >= 20 )  {
         time_20ms = millis();
         moveOneStep();
-        // sucker
+        // Vacuum Cup
         if (allConverge()) {
           if (posG[6] < 30) {
             digitalWrite(valve_pin, LOW);
@@ -984,14 +1013,14 @@ void Arm7Bot::softwareSystem() {
   }
   else if (FSM_Status == 2) {
     // initial robot arm
-    if (pre_FSM_Status != 2) readMode();
+    if (pre_FSM_Status != 2) forcelessMode();
 
     // add a normal pose
     if (addPoseFlag) {
       addPoseFlag = false;
       calculatePosD();
-      // for sucker
-      if (suckerState == 1)   posD[6] = 0;
+      // for vacuum cup
+      if (vacuumCupState == 1)   posD[6] = 0;
       else posD[6] = 80;
       // count pose number: MaxNum = 254
       if (poseCnt < 254) poseCnt++; Serial.print("AddRecPose: "); Serial.println(poseCnt);
@@ -1036,7 +1065,7 @@ void Arm7Bot::softwareSystem() {
 
       digitalWrite(valve_pin, LOW);
       digitalWrite(pump_pin, HIGH);
-      suckerState = 1;
+      vacuumCupState = 1;
 
     } // END- add a grab pose
 
@@ -1070,7 +1099,7 @@ void Arm7Bot::softwareSystem() {
 
       digitalWrite(valve_pin, HIGH);
       digitalWrite(pump_pin, LOW);
-      suckerState = 0;
+      vacuumCupState = 0;
 
     } // END- add a release pose
 
@@ -1116,7 +1145,7 @@ void Arm7Bot::softwareSystem() {
       time_20ms = millis();
       if (poseCnt != 0) {
         moveOneStep();
-        // sucker
+        // vacuum cup
         if (allConverge()) {
           if (posG[6] < 30) {
             digitalWrite(valve_pin, LOW);
@@ -1130,13 +1159,16 @@ void Arm7Bot::softwareSystem() {
     }
 
   }  // END_FSM-status3
+
+  // If external forces too high for a while: FSM_Status = 4;
+  // This protection mechanism should be test for a while... 
   else if (FSM_Status == 4) {
     if (pre_FSM_Status != 4) stopMode();
 
   }
+  
+  
   pre_FSM_Status = FSM_Status;
-
-  // force too high for a while: FSM_Status = 4;
 
 }  
 

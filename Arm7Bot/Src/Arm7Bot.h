@@ -1,9 +1,9 @@
 /****************************************************
 /* 7Bot class for Arduino platform
 /* Author: Jerry Peng
-/* Date: 26 April 2016
+/* Date: 5 May 2016
 /*
-/* Version 1.00
+/* Version 1.01
 /* www.7bot.cc
 /*  
 /* Description: 
@@ -42,7 +42,7 @@ const int buzzer_pin = 12;
 class Arm7Bot {
 
   private:
-  
+    // Kinematics & IK
     PVector joint[9];
     int angleRangCheck();
     void calcJoints();
@@ -102,29 +102,32 @@ class Arm7Bot {
     unsigned long time_1000ms = 0;
     // FSM_status3, playCnt
     int playCnt = 1;
-    // Sucker
+    // Vaccum Cup
     int valve_pin = 10;
     int pump_pin = 11;
-    int suckerState = 0;  // 0-release, 1-grab 
-    void suckerInit();
-    //
+    int vacuumCupState = 0;  // 0-release, 1-grab 
+    void vacuumCupInit();
+
+    // Hardware pose record
     int poseCnt = 0;
-    //
+
+    // Flash read & writre
+    DueFlashStorage dueFlashStorage;
     void getStoreData();
     void setStoreData();
      // 
     int F2_id = 0;
     bool F2 = false; bool F4 = false; bool F6 = false; bool F8 = false;bool F10 = false; bool F11 = false; bool F12 = false;
-    DueFlashStorage dueFlashStorage;
-    int forceStatus = 1;
-
+    
+    
     // Servo objects
+    int forceStatus = 1;     // 0-forceless, 1-normal servo, 2-protection 
     Servo Servos[SERVO_NUM];
     // Geometrical positions
     double posG[SERVO_NUM];  // Goal position, receive from PC
-    double pos[SERVO_NUM];   // control position
-    double posS[SERVO_NUM];  
-    double posD[SERVO_NUM];  
+    double pos[SERVO_NUM];   // Control position
+    double posS[SERVO_NUM];  // Start position
+    double posD[SERVO_NUM];  // Detected position
     // servo motor positions
     double servoPos[SERVO_NUM];  // control position
     double servoPosD[SERVO_NUM]; // Detected position, calculate from analog signal 
@@ -159,15 +162,15 @@ class Arm7Bot {
   public:
   
     // Servo state
-    double maxSpeed[SERVO_NUM];
-    boolean isFluent[SERVO_NUM];
-    double offset[SERVO_NUM];
+    double maxSpeed[SERVO_NUM];    // Unit: degrees/second
+    boolean isFluent[SERVO_NUM];   
+    double offset[SERVO_NUM];      // assembly offsets
     
     Arm7Bot();
     
     boolean allConverge();
     void initialMove();
-    void readMode();
+    void forcelessMode();
     void stopMode();
     void move(double angles[SERVO_NUM]);
     void softwareSystem();
