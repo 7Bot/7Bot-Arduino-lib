@@ -1,10 +1,5 @@
-#include <Servo.h>
-#include <DueFlashStorage.h>
-
 #include <Arm7Bot.h>
 Arm7Bot Arm;
-
-
 
 void setup() {
   // Open communication port
@@ -19,12 +14,3 @@ void loop() {
   Arm.softwareSystem();
   
 }   
-
-
-
-
-
-
-
-
-
