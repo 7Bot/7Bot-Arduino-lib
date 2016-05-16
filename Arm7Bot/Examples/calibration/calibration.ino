@@ -24,7 +24,7 @@ void setup() {
   delay(1000);
 
   // Set 7Bot to forceless mode 
-  Arm.readMode();
+  Arm.forcelessMode();
   delay(1000);
   
 }

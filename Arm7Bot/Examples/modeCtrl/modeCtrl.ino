@@ -15,6 +15,6 @@ void loop() {
   delay(2000);
 
   // Set mode to forceless
-  Arm.readMode();
+  Arm.forcelessMode();
   delay(3000);
 }
