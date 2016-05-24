@@ -306,17 +306,17 @@ void Arm7Bot::sendPosDAndForce() {
 
   }
   // Send data
-  Serial.write(0xFE); // Beginning Flag 0xFE
-  Serial.write(0xF9);
+  ARMPORT.write(0xFE); // Beginning Flag 0xFE
+  ARMPORT.write(0xF9);
   // SERVO_NUM tuple (2-bytes each)
   for (int i = 0; i < SERVO_NUM; i++) {
-    Serial.write((sendData[i] / 128) & 0x7F);
-    Serial.write(sendData[i] & 0x7F);
+    ARMPORT.write((sendData[i] / 128) & 0x7F);
+    ARMPORT.write(sendData[i] & 0x7F);
   }
   // Convergency
   int isAllConverge = 0;
   if (allConverge()) isAllConverge = 1;
-  Serial.write(isAllConverge & 0x7F);
+  ARMPORT.write(isAllConverge & 0x7F);
 
 }
 
@@ -452,7 +452,7 @@ int Arm7Bot::IK5(PVector j6, PVector vec56_d) {
   PVector vec45 =  PVector(joint[5].x - joint[4].x, joint[5].y - joint[4].y, joint[5].z - joint[4].z);
   PVector j6p = calcProjectionPt(j6, j5, vec45);
   PVector vec56p =  PVector(j6p.x - j5.x, j6p.y - j5.y, j6p.z - j5.z);
-  //Serial.print("vec56p= "); Serial.print( vec56p.x ); Serial.print(" ");Serial.print( vec56p.y ); Serial.print(" ");Serial.println( vec56p.z );
+  //ARMPORT.print("vec56p= "); ARMPORT.print( vec56p.x ); ARMPORT.print(" ");ARMPORT.print( vec56p.y ); ARMPORT.print(" ");ARMPORT.println( vec56p.z );
   theta[3] = acos( vec56_0.dot(vec56p) / (j5.dist(j6_0) * j5.dist(j6p)) );
   theta[4] = acos( vec56.dot(vec56p) / (j5.dist(j6) * j5.dist(j6p)) );
   calcJoints();
@@ -503,9 +503,9 @@ int Arm7Bot::IK6(PVector j6, PVector vec56_d, PVector vec67_d) {
 
 void Arm7Bot::receiveCom() {
 
-  while (Serial.available() > 0) {
+  while (ARMPORT.available() > 0) {
     // read data
-    int rxBuf = Serial.read();
+    int rxBuf = ARMPORT.read();
     if (!beginFlag)
     {
       beginFlag = rxBuf == 0xFE ? true : false; // Beginning Flag 0xFE
@@ -535,10 +535,10 @@ void Arm7Bot::receiveCom() {
             cnt = 0;
             F2_id = constrain(rxBuf, 0, 127);
             //
-            Serial.write(0xFE);
-            Serial.write(0xF2);
-            Serial.write(F2_id & 0x7F);
-            Serial.write(dueFlashStorage.read(F2_id) & 0x7F);
+            ARMPORT.write(0xFE);
+            ARMPORT.write(0xF2);
+            ARMPORT.write(F2_id & 0x7F);
+            ARMPORT.write(dueFlashStorage.read(F2_id) & 0x7F);
             break;
 
           case 3:
@@ -559,10 +559,10 @@ void Arm7Bot::receiveCom() {
             instruction = 0;
             cnt = 0;
             //
-            Serial.write(0xFE);
-            Serial.write(0xF4);
+            ARMPORT.write(0xFE);
+            ARMPORT.write(0xF4);
             for (int i = 0; i < SERVO_NUM; i++) {
-              Serial.write(dueFlashStorage.read(128 + i) & 0x7F);
+              ARMPORT.write(dueFlashStorage.read(128 + i) & 0x7F);
             }
             break;
 
@@ -578,9 +578,9 @@ void Arm7Bot::receiveCom() {
             instruction = 0;
             cnt = 0;
             //
-            Serial.write(0xFE);
-            Serial.write(0xF6);
-            Serial.write(forceStatus & 0x7F);
+            ARMPORT.write(0xFE);
+            ARMPORT.write(0xF6);
+            ARMPORT.write(forceStatus & 0x7F);
             break;
 
           case 7:
@@ -611,10 +611,10 @@ void Arm7Bot::receiveCom() {
               sendData[i] = maxSpeed[i] / 10;
               if (isFluent[i]) sendData[i] += 64;
             }
-            Serial.write(0xFE);
-            Serial.write(0xF8);
+            ARMPORT.write(0xFE);
+            ARMPORT.write(0xF8);
             for (int i = 0; i < SERVO_NUM; i++) {
-              Serial.write(sendData[i] & 0x7F);
+              ARMPORT.write(sendData[i] & 0x7F);
             }
             break;
 
@@ -948,9 +948,9 @@ void Arm7Bot::softwareSystem() {
         }
         else {
           // send IK error status alarm
-          Serial.write(0xFE);
-          Serial.write(0xFA);
-          Serial.write(0x01);
+          ARMPORT.write(0xFE);
+          ARMPORT.write(0xFA);
+          ARMPORT.write(0x01);
         }
         //----
       }
@@ -966,9 +966,9 @@ void Arm7Bot::softwareSystem() {
         }
         else {
           // send IK error status alarm
-          Serial.write(0xFE);
-          Serial.write(0xFB);
-          Serial.write(0x01);
+          ARMPORT.write(0xFE);
+          ARMPORT.write(0xFB);
+          ARMPORT.write(0x01);
         }
 
       }
@@ -986,9 +986,9 @@ void Arm7Bot::softwareSystem() {
         }
         else {
           // send IK error status alarm
-          Serial.write(0xFE);
-          Serial.write(0xFC);
-          Serial.write(0x01);
+          ARMPORT.write(0xFE);
+          ARMPORT.write(0xFC);
+          ARMPORT.write(0x01);
         }
 
       }
@@ -1023,7 +1023,7 @@ void Arm7Bot::softwareSystem() {
       if (vacuumCupState == 1)   posD[6] = 0;
       else posD[6] = 80;
       // count pose number: MaxNum = 254
-      if (poseCnt < 254) poseCnt++; Serial.print("AddRecPose: "); Serial.println(poseCnt);
+      if (poseCnt < 254) poseCnt++; ARMPORT.print("AddRecPose: "); ARMPORT.println(poseCnt);
       dueFlashStorage.write(256, (uint8_t)poseCnt);
       // store pose data
       int storeData[SERVO_NUM];
@@ -1052,7 +1052,7 @@ void Arm7Bot::softwareSystem() {
       Servos[6].writeMicroseconds( int(500 + servoPos[6] * (2500 - 500) / 180) );
       posD[6] = 0;
 
-      if (poseCnt < 254) poseCnt++; Serial.print("AddGrabPose: "); Serial.println(poseCnt);
+      if (poseCnt < 254) poseCnt++; ARMPORT.print("AddGrabPose: "); ARMPORT.println(poseCnt);
       dueFlashStorage.write(256, (uint8_t)poseCnt);
       int storeData[SERVO_NUM];
       for (int i = 0; i < SERVO_NUM; i++) {
@@ -1085,7 +1085,7 @@ void Arm7Bot::softwareSystem() {
 
       posD[6] = 75;
 
-      if (poseCnt < 254) poseCnt++; Serial.print("AddReleasePose: "); Serial.println(poseCnt);
+      if (poseCnt < 254) poseCnt++; ARMPORT.print("AddReleasePose: "); ARMPORT.println(poseCnt);
       dueFlashStorage.write(256, (uint8_t)poseCnt);
       // store pose data
       int storeData[SERVO_NUM];
@@ -1105,7 +1105,7 @@ void Arm7Bot::softwareSystem() {
 
     // clear the poses
     if (clearPoseFlag) {
-      clearPoseFlag = false; Serial.println("Clear Poses");
+      clearPoseFlag = false; ARMPORT.println("Clear Poses");
       isReleaseFlag = false;
       poseCnt = 0;
       dueFlashStorage.write(256, (uint8_t)poseCnt);
@@ -1124,7 +1124,7 @@ void Arm7Bot::softwareSystem() {
       time_1000ms = millis();
       //
       if (poseCnt != 0) {
-        if (playCnt > poseCnt) playCnt = 1; Serial.print("PlayPose: "); Serial.println(playCnt);
+        if (playCnt > poseCnt) playCnt = 1; ARMPORT.print("PlayPose: "); ARMPORT.println(playCnt);
         //read stored datas
         int storeData[SERVO_NUM];
         for (int i = 0; i < SERVO_NUM; i++) {
