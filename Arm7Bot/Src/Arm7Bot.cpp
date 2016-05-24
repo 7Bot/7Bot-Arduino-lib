@@ -65,20 +65,6 @@ void Arm7Bot::setStoreData() {
 // Read current postion first, and then adjust to the inital postion softly and gradually.
 void Arm7Bot::initialMove() {
   
-  for (int i = 0; i < filterSize; i++) {
-    delay(10);
-    receiveCom();
-    filterAnalogData();
-  }
-  calculatePosD();
-  
-  for (int i = 0; i < SERVO_NUM; i++) {
-    pos[i] = posD[i];
-    posS[i] = pos[i];
-    Servos[i].attach( 2 + i, 90, 2500);  // attach servos
-    isConverge[i] = false;
-  }
-
   // Setting initial speeds to low values
   maxSpeed[0] = 15; 
   maxSpeed[1] = 20; 
@@ -87,6 +73,19 @@ void Arm7Bot::initialMove() {
   maxSpeed[4] = 30; 
   maxSpeed[5] = 30; 
   maxSpeed[6] = 30;
+    
+  for (int i = 0; i < filterSize; i++) {
+    delay(10);
+    receiveCom();
+    filterAnalogData();
+  }
+  calculatePosD();
+
+  for (int i = 0; i < SERVO_NUM; i++) {
+    pos[i] = posS[i] = posD[i]; // Set start position & current position to detected position
+    Servos[i].attach( 2 + i, 90, 2500);  // attach servos
+    isConverge[i] = false;
+  }
 
   // Adjust to the inital postion
   while ( !allConverge() ) {
@@ -105,28 +104,55 @@ void Arm7Bot::initialMove() {
   maxSpeed[6] = 200;
 }
 
-// Set 7Bot to forceless mode, which you can drag 7Bot by hand easily and also read stable pose feedbacks
-void Arm7Bot::forcelessMode() {
-  if (Servos[0].attached()) {
+void Arm7Bot::servoMode(int mode) {
+  forceStatus = constrain(mode, 0, 2);
+  
+  int forceMicroSeconds = 0;
+  if (forceStatus == 0) forceMicroSeconds = 100;
+  if (forceStatus == 2) forceMicroSeconds = 300;
+
+  // Re-attach servos if switching from forceless or stop modes.
+  if (!Servos[0].attached()) {
     for (int i = 0; i < SERVO_NUM; i++) {
-      Servos[i].writeMicroseconds(100);
+      Servos[i].attach( 2 + i, 90, 2500);  // attach servos
     }
-    delay(100);
-    for (int i = 0; i < SERVO_NUM; i++) Servos[i].detach();
+    delay(100);    
+
+    // Stop moving
+    for (int i = 0; i < filterSize; i++) {
+      // delay(10);
+      filterAnalogData();
+    }
+    calculatePosD();
+    
+    for (int i = 0; i < SERVO_NUM; i++) {
+      pos[i] = posS[i] = posD[i]; // Set start position & current position to detected position
+    }
+    servoCtrl();
+  }
+  
+  
+  // Set the servo mode and detatch
+  if (forceStatus != 1) {
+    if (Servos[0].attached()) {
+      for (int i = 0; i < SERVO_NUM; i++) {
+        Servos[i].writeMicroseconds(forceMicroSeconds);
+      }
+      delay(100);
+      for (int i = 0; i < SERVO_NUM; i++) Servos[i].detach();
+    } 
   }
 }
 
+// Set 7Bot to forceless mode, which you can drag 7Bot by hand easily and also read stable pose feedbacks
+void Arm7Bot::forcelessMode() { servoMode(0); }
+
+// Set 7Bot to normal mode, which stops the arm from moving.
+void Arm7Bot::normalMode() { servoMode(1); }
+
 // Set 7Bot to stop mode, which you can drag 7Bot by hand but the robot still have some forces.
 // This mode is useful for device protection, robot can be moved by external forces, but still have some resistance.
-void Arm7Bot::stopMode() {
-  if (Servos[0].attached()) {
-    for (int i = 0; i < SERVO_NUM; i++) {
-      Servos[i].writeMicroseconds(300);
-    }
-    delay(100);
-    for (int i = 0; i < SERVO_NUM; i++) Servos[i].detach();
-  }
-}
+void Arm7Bot::stopMode()  { servoMode(2); }
 
 // 7Bot move fuction
 // Given each axis angle(Unit:degrees)

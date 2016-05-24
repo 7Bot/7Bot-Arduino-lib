@@ -174,8 +174,10 @@ class Arm7Bot {
     Arm7Bot();
 
     boolean allConverge();
+    void servoMode(int mode);
     void initialMove();
     void forcelessMode();
+    void normalMode();
     void stopMode();
     void move(double angles[SERVO_NUM]);
     void softwareSystem();
