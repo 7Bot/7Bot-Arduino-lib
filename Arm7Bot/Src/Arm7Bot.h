@@ -164,8 +164,6 @@ class Arm7Bot {
 
 
   public:
-    #define PORT Serial1
-
     // Servo state
     double maxSpeed[SERVO_NUM];    // Unit: degrees/second
     boolean isFluent[SERVO_NUM];
