@@ -180,6 +180,7 @@ class Arm7Bot {
     void normalMode();
     void stopMode();
     void move(double angles[SERVO_NUM]);
+    void moveIK3(PVector point);
     void softwareSystem();
 
 };

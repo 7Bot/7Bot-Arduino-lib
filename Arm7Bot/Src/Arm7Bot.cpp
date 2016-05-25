@@ -246,6 +246,16 @@ void Arm7Bot::moveOneStep() {
 
 }
 
+void Arm7Bot::moveIK3(PVector point) {
+  int IK_status = IK3( point );
+  if (IK_status == 0) {
+    for (int i = 0; i < 3; i++) {
+      posG[i] = degrees(theta[i]);
+    }
+  }
+  move(posG);
+}
+
 
 // Set PWM ctrl signal to servos
 void Arm7Bot::servoCtrl() {
