@@ -132,6 +132,7 @@ class Arm7Bot {
     double pos[SERVO_NUM];   // Control position
     double posS[SERVO_NUM];  // Start position
     double posD[SERVO_NUM];  // Detected position
+    
     // servo motor positions
     double servoPos[SERVO_NUM];  // control position
     double servoPosD[SERVO_NUM]; // Detected position, calculate from analog signal
@@ -161,8 +162,6 @@ class Arm7Bot {
     // UART
     void receiveCom();
 
-
-
   public:
     // Servo state
     double maxSpeed[SERVO_NUM];    // Unit: degrees/second
@@ -178,13 +177,10 @@ class Arm7Bot {
     void normalMode();
     void stopMode();
     void move(double angles[SERVO_NUM]);
-    void moveIK3(PVector point);
+    void moveIK3(PVector j5);
+    void moveIK5(PVector j6, PVector vec56_d);
+    void moveIK6(PVector j6, PVector vec56_d, PVector vec67_d);
     void softwareSystem();
 
 };
-
-
 #endif
-
-
-

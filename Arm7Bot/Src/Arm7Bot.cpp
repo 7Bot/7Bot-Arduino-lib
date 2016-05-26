@@ -64,7 +64,7 @@ void Arm7Bot::setStoreData() {
 // Motion initial fuction.
 // Read current postion first, and then adjust to the inital postion softly and gradually.
 void Arm7Bot::initialMove() {
-  
+
   // Setting initial speeds to low values
   maxSpeed[0] = 15; 
   maxSpeed[1] = 20; 
@@ -73,16 +73,17 @@ void Arm7Bot::initialMove() {
   maxSpeed[4] = 30; 
   maxSpeed[5] = 30; 
   maxSpeed[6] = 30;
-    
+  
   for (int i = 0; i < filterSize; i++) {
     delay(10);
     receiveCom();
     filterAnalogData();
   }
   calculatePosD();
-
+    
   for (int i = 0; i < SERVO_NUM; i++) {
     pos[i] = posS[i] = posD[i]; // Set start position & current position to detected position
+    posG[i] = INITIAL_POS[i]; // Set the goal locations to firmware defaults
     Servos[i].attach( 2 + i, 90, 2500);  // attach servos
     isConverge[i] = false;
   }
@@ -246,20 +247,46 @@ void Arm7Bot::moveOneStep() {
 
 }
 
-void Arm7Bot::moveIK3(PVector point) {
-  int IK_status = IK3( point );
+void Arm7Bot::moveIK3(PVector j5) {
+  int IK_status = IK3( j5 );
   if (IK_status == 0) {
     for (int i = 0; i < 3; i++) {
       posG[i] = degrees(theta[i]);
     }
+    // posG[3] = theta3;
+    // posG[4] = theta4;
+    // posG[5] = theta5;
+    // posG[6] = theta6;
   }
   move(posG);
 }
 
+void Arm7Bot::moveIK5(PVector j6, PVector vec56) {
+  int IK_status = IK5( j6, vec56 );
+  if (IK_status == 0) {
+    for (int i = 0; i < 5; i++) {
+      posG[i] = degrees(theta[i]);
+    }
+    posG[5] = theta5;
+    posG[6] = theta6;
+  }
+  move(posG);
+}
+    
+void Arm7Bot::moveIK6(PVector j6, PVector vec56, PVector vec67) {
+  int IK_status = IK6( j6, vec56, vec67 );
+  if (IK_status == 0) {
+    for (int i = 0; i < 6; i++) {
+      posG[i] = degrees(theta[i]);
+    }
+    posG[6] = theta6;
+  }
+  move(posG);
+}    
+
 
 // Set PWM ctrl signal to servos
 void Arm7Bot::servoCtrl() {
-
   geometryConstrain();
   for (int i = 0; i < SERVO_NUM; i++) {
     double posTmp = pos[i];
