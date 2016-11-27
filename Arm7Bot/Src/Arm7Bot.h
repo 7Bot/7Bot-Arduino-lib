@@ -5,9 +5,9 @@
 /*
 /* Version 1.01
 /* www.7bot.cc
-/*  
-/* Description: 
-/* 
+/*
+/* Description:
+/*
 /*
 /***************************************************/
 #ifndef _ARM7BOT_H
@@ -22,17 +22,21 @@
 #include "MedianFilter.h"
 #include "PressFilter.h"
 
-const int BAUD_RATE = 115200; 
+const int BAUD_RATE = 115200;
+
+/* Serial port for communication */
+#define ARMPORT Serial
 
 /* Arm7Bot parameters */
 #define SERVO_NUM 7
 const int INITIAL_POS[SERVO_NUM]= {90, 115, 65, 90, 90, 90, 75};
-const int fluentRangeInit[SERVO_NUM] = {2, 2, 2, 2, 2, 2, 2};
+const int fluentRangeInit[SERVO_NUM] = {5, 5, 5, 5, 5, 5, 5};
 const boolean reverse[SERVO_NUM] = {true, false, false, false, false, false, true};
 const double offsetInit[SERVO_NUM] = {0, 0, 0, 0, 0, 0, -50.0};  // Unit: Degree
 const double thetaMin[SERVO_NUM] = { 0,  0, -1.134464,  0.17453292,  0,  0, 0};
 const double thetaMax[SERVO_NUM] = {PI, PI, 2.0071287, 2.9670596, PI, PI, PI/2};
 const double a=120.0, b=40.0, c=198.50, d=30.05, e=77.80, f=22.10, g=12.0, h = 29.42;
+
 /* Btn & Buzzer */
 #define BUTTON_NUM 2
 const int button_pin[BUTTON_NUM] = {71, 70};
@@ -105,7 +109,7 @@ class Arm7Bot {
     // Vaccum Cup
     int valve_pin = 10;
     int pump_pin = 11;
-    int vacuumCupState = 0;  // 0-release, 1-grab 
+    int vacuumCupState = 0;  // 0-release, 1-grab
     void vacuumCupInit();
 
     // Hardware pose record
@@ -115,29 +119,30 @@ class Arm7Bot {
     DueFlashStorage dueFlashStorage;
     void getStoreData();
     void setStoreData();
-     // 
+     //
     int F2_id = 0;
     bool F2 = false; bool F4 = false; bool F6 = false; bool F8 = false;bool F10 = false; bool F11 = false; bool F12 = false;
-    
-    
+
+
     // Servo objects
-    int forceStatus = 1;     // 0-forceless, 1-normal servo, 2-protection 
+    int forceStatus = 1;     // 0-forceless, 1-normal servo, 2-protection
     Servo Servos[SERVO_NUM];
     // Geometrical positions
     double posG[SERVO_NUM];  // Goal position, receive from PC
     double pos[SERVO_NUM];   // Control position
     double posS[SERVO_NUM];  // Start position
     double posD[SERVO_NUM];  // Detected position
+    
     // servo motor positions
     double servoPos[SERVO_NUM];  // control position
-    double servoPosD[SERVO_NUM]; // Detected position, calculate from analog signal 
+    double servoPosD[SERVO_NUM]; // Detected position, calculate from analog signal
     // filter
-    int filterData[SERVO_NUM];  
+    int filterData[SERVO_NUM];
     MedianFilter filters[SERVO_NUM];
-    ForceFilter forceFilters[SERVO_NUM]; 
+    ForceFilter forceFilters[SERVO_NUM];
     int force[SERVO_NUM];
     void calculateForce();
-    
+
     void moveOneStep();
     void geometryConstrain();
     void servoCtrl();
@@ -154,31 +159,28 @@ class Arm7Bot {
     int IK5(PVector j6, PVector vec56_d);
     int IK6(PVector j6, PVector vec56_d, PVector vec67_d);
 
-    // UART 
+    // UART
     void receiveCom();
 
-    
-    
   public:
-  
     // Servo state
     double maxSpeed[SERVO_NUM];    // Unit: degrees/second
-    boolean isFluent[SERVO_NUM];   
+    boolean isFluent[SERVO_NUM];
     double offset[SERVO_NUM];      // assembly offsets
-    
+
     Arm7Bot();
-    
+
     boolean allConverge();
+    void servoMode(int mode);
     void initialMove();
     void forcelessMode();
+    void normalMode();
     void stopMode();
     void move(double angles[SERVO_NUM]);
+    void moveIK3(PVector j5);
+    void moveIK5(PVector j6, PVector vec56_d);
+    void moveIK6(PVector j6, PVector vec56_d, PVector vec67_d);
     void softwareSystem();
-         
+
 };
-
-
 #endif
- 
- 
-

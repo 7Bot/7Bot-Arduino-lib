@@ -1,9 +1,5 @@
-#include <Servo.h>
-#include <DueFlashStorage.h>
-
 #include <Arm7Bot.h>
 Arm7Bot Arm;
-
 
 void setup() {
   // initial 7Bot Arm, the default mode is Normal Servo
@@ -22,13 +18,3 @@ void loop() {
   Arm.forcelessMode();
   delay(3000);
 }
-  
-
-
-
-
-
-
-
-
-
