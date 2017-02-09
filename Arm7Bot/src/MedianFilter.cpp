@@ -47,5 +47,9 @@ int MedianFilter::filter(int dataIn) {
     }
    }
    
-   return rankingElements[(filterSize-1)/2];
+   // 4- Drop highest & lowest 20% then calculate the mean
+   temp = 0;
+   for (int i=8;i<filterSize-8;i++) {temp += rankingElements[i];}
+   return (temp/(filterSize-16));
+   //return rankingElements[(filterSize-1)/2];
 }

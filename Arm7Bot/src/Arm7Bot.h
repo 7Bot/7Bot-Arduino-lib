@@ -13,9 +13,14 @@
 #ifndef _ARM7BOT_H
 #define _ARM7BOT_H
 
-#include "Arduino.h"
+#include <Arduino.h>
 #include <Servo.h>
-#include <DueFlashStorage.h>
+
+#ifdef __SAM3X8E__
+  #include <DueFlashStorage.h>
+#else
+  #include <EEPROM.h>
+#endif
 
 #include "PVector.h"
 #include "ForceFilter.h"
@@ -25,10 +30,17 @@
 const int BAUD_RATE = 115200;
 
 /* Serial port for communication */
-#define ARMPORT Serial
+#ifndef ARMPORT
+  #define ARMPORT Serial1
+#endif
+#ifndef DEBUGPORT
+  #define DEBUGPORT Serial
+#endif
 
 /* Arm7Bot parameters */
 #define SERVO_NUM 7
+const PVector INITIAL_COORDS_J5= {0.0, 178.0, 216.0};
+const PVector INITIAL_COORDS_J6= {0.0, 192.0, 233.0};
 const int INITIAL_POS[SERVO_NUM]= {90, 115, 65, 90, 90, 90, 75};
 const int fluentRangeInit[SERVO_NUM] = {5, 5, 5, 5, 5, 5, 5};
 const boolean reverse[SERVO_NUM] = {true, false, false, false, false, false, true};
@@ -47,9 +59,7 @@ class Arm7Bot {
 
   private:
     // Kinematics & IK
-    PVector joint[9];
     int angleRangCheck();
-    void calcJoints();
     PVector arbitraryRotate(PVector point, PVector pointA, PVector pointB, double _angle);
     PVector zAxiRotate(PVector point, double _angle);
     PVector calcProjectionPt(PVector pt0, PVector pt1, PVector nVec);
@@ -116,7 +126,12 @@ class Arm7Bot {
     int poseCnt = 0;
 
     // Flash read & writre
-    DueFlashStorage dueFlashStorage;
+    #ifdef __SAM3X8E__
+      DueFlashStorage Storage;
+    #else
+      #define Storage EEPROM
+    #endif
+
     void getStoreData();
     void setStoreData();
      //
@@ -153,11 +168,10 @@ class Arm7Bot {
     boolean isConverge[SERVO_NUM];
     int fluentRange[SERVO_NUM];
 
-    // IK
-    double theta[SERVO_NUM];  // angles
     int IK3(PVector pt);
     int IK5(PVector j6, PVector vec56_d);
     int IK6(PVector j6, PVector vec56_d, PVector vec67_d);
+    double theta[SERVO_NUM];  // angles
 
     // UART
     void receiveCom();
@@ -177,10 +191,20 @@ class Arm7Bot {
     void normalMode();
     void stopMode();
     void move(double angles[SERVO_NUM]);
-    void moveIK3(PVector j5);
-    void moveIK5(PVector j6, PVector vec56_d);
-    void moveIK6(PVector j6, PVector vec56_d, PVector vec67_d);
+
+	// IK
+    void moveIK(PVector j5);
+    void moveIK(PVector j6, PVector vec56_d);
+    void moveIK(PVector j6, PVector vec56_d, PVector vec67_d);
+
+	// Retained for backwards compatibility
+    void moveIK3(PVector j5)									{ moveIK(j5); }
+    void moveIK5(PVector j6, PVector vec56_d)					{ moveIK(j6, vec56_d); }
+    void moveIK6(PVector j6, PVector vec56_d, PVector vec67_d)	{ moveIK(j6, vec56_d, vec67_d); }
+
     void softwareSystem();
 
+    PVector joint[9];
+    void calcJoints();
 };
 #endif
