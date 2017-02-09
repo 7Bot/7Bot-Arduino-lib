@@ -24,7 +24,9 @@ Arm7Bot::Arm7Bot() {
     filterData[i] = 0;
   }
 
-  analogWriteResolution(12);  // for Due
+  #if defined(__SAM3X8E__) || defined(__PIC32MX__)
+    analogWriteResolution(12);
+  #endif
   
   // initalize elements
   btAndBuzInit();
@@ -43,10 +45,10 @@ void Arm7Bot::vacuumCupInit() {
 
 // Read storage data from flash
 void Arm7Bot::getStoreData() {
-  int poseCntInit = (int)dueFlashStorage.read(256);
+  int poseCntInit = (int)Storage.read(256);
   if (poseCntInit != 255) poseCnt = poseCntInit;
   for (int i = 0; i < SERVO_NUM; i++) {
-    int offsetRead = (int)dueFlashStorage.read(128 + i);
+    int offsetRead = (int)Storage.read(128 + i);
     if (offsetRead != 255) {
       int mul = 1;
       if (offsetRead >= 64) mul = -1;
@@ -57,8 +59,8 @@ void Arm7Bot::getStoreData() {
 
 // Write some firmware datas to flash (ID:0~254, value:0~127 valid)
 void Arm7Bot::setStoreData() {
-  dueFlashStorage.write(0, 7);  // 7Bot
-  dueFlashStorage.write(1, 10);  // Verion 1.0
+  Storage.write(0, 7);  // 7Bot
+  Storage.write(1, 10);  // Verion 1.0
 }
 
 // Motion initial fuction.
@@ -247,11 +249,16 @@ void Arm7Bot::moveOneStep() {
 
 }
 
-void Arm7Bot::moveIK3(PVector j5) {
+void Arm7Bot::moveIK(PVector j5) {
   int IK_status = IK3( j5 );
   if (IK_status == 0) {
+    DEBUGPORT.println("IK3 Angles: ");
     for (int i = 0; i < 3; i++) {
       posG[i] = degrees(theta[i]);
+      DEBUGPORT.print("Joint ");
+      DEBUGPORT.print(i);
+      DEBUGPORT.print(": ");
+      DEBUGPORT.println(posG[i]);
     }
     // posG[3] = theta3;
     // posG[4] = theta4;
@@ -261,25 +268,37 @@ void Arm7Bot::moveIK3(PVector j5) {
   move(posG);
 }
 
-void Arm7Bot::moveIK5(PVector j6, PVector vec56) {
+void Arm7Bot::moveIK(PVector j6, PVector vec56) {
   int IK_status = IK5( j6, vec56 );
   if (IK_status == 0) {
+    DEBUGPORT.println("IK5 Angles: ");
     for (int i = 0; i < 5; i++) {
       posG[i] = degrees(theta[i]);
+
+      DEBUGPORT.print("Joint ");
+      DEBUGPORT.print(i);
+      DEBUGPORT.print(": ");
+      DEBUGPORT.println(posG[i]);
     }
-    posG[5] = theta5;
-    posG[6] = theta6;
+    // posG[5] = theta5;
+    // posG[6] = theta6;
   }
   move(posG);
 }
     
-void Arm7Bot::moveIK6(PVector j6, PVector vec56, PVector vec67) {
+void Arm7Bot::moveIK(PVector j6, PVector vec56, PVector vec67) {
   int IK_status = IK6( j6, vec56, vec67 );
   if (IK_status == 0) {
+    DEBUGPORT.println("IK5 Angles: ");
     for (int i = 0; i < 6; i++) {
       posG[i] = degrees(theta[i]);
+
+      DEBUGPORT.print("Joint ");
+      DEBUGPORT.print(i);
+      DEBUGPORT.print(": ");
+      DEBUGPORT.println(posG[i]);
     }
-    posG[6] = theta6;
+    // posG[6] = theta6;
   }
   move(posG);
 }    
@@ -493,6 +512,11 @@ int Arm7Bot::IK3(PVector pt) {
       theta[2] - 0.8203047 + theta[1] < PI && theta[2] + theta[1] > 1.44862327) {
     status = 0;
   }
+
+  if (status != 0) {
+    // ARMPORT.print("IK3 Status for point ("); ARMPORT.print(pt.x); ARMPORT.print(","); ARMPORT.print(pt.y); ARMPORT.print(","); ARMPORT.print(pt.z);
+    // ARMPORT.print("): "); ARMPORT.println(status);
+  }
   return status;
 }
 
@@ -527,6 +551,12 @@ int Arm7Bot::IK5(PVector j6, PVector vec56_d) {
   theta[4] = PI - theta[4]; 
   calcJoints();
   dist = j6.dist(joint[6]);
+
+  if (dist >= 1) {
+    ARMPORT.print("IK5 Status: ");
+    ARMPORT.println(dist);
+  }
+
   if (dist < 1) { 
     return 0;
   }
@@ -588,7 +618,7 @@ void Arm7Bot::receiveCom() {
               cnt = 0;
               dataBuf[0] = constrain(dataBuf[0], 0, 127);
               dataBuf[1] = constrain(dataBuf[1], 0, 127);
-              dueFlashStorage.write(dataBuf[0], (uint8_t)dataBuf[1]);
+              Storage.write(dataBuf[0], (uint8_t)dataBuf[1]);
             }
             break;
 
@@ -601,7 +631,7 @@ void Arm7Bot::receiveCom() {
             ARMPORT.write(0xFE);
             ARMPORT.write(0xF2);
             ARMPORT.write(F2_id & 0x7F);
-            ARMPORT.write(dueFlashStorage.read(F2_id) & 0x7F);
+            ARMPORT.write(Storage.read(F2_id) & 0x7F);
             break;
 
           case 3:
@@ -612,7 +642,7 @@ void Arm7Bot::receiveCom() {
               instruction = 0;
               cnt = 0;
               for (int i = 0; i < SERVO_NUM; i++) {
-                dueFlashStorage.write(128 + i, (uint8_t)dataBuf[i]);
+                Storage.write(128 + i, (uint8_t)dataBuf[i]);
               }
             }
             break;
@@ -625,7 +655,7 @@ void Arm7Bot::receiveCom() {
             ARMPORT.write(0xFE);
             ARMPORT.write(0xF4);
             for (int i = 0; i < SERVO_NUM; i++) {
-              ARMPORT.write(dueFlashStorage.read(128 + i) & 0x7F);
+              ARMPORT.write(Storage.read(128 + i) & 0x7F);
             }
             break;
 
@@ -1087,15 +1117,15 @@ void Arm7Bot::softwareSystem() {
       else posD[6] = 80;
       // count pose number: MaxNum = 254
       if (poseCnt < 254) poseCnt++; ARMPORT.print("AddRecPose: "); ARMPORT.println(poseCnt);
-      dueFlashStorage.write(256, (uint8_t)poseCnt);
+      Storage.write(256, (uint8_t)poseCnt);
       // store pose data
       int storeData[SERVO_NUM];
       for (int i = 0; i < SERVO_NUM; i++) {
         storeData[i] = (int)(posD[i] * 50 / 9);
       }
       for (int i = 0; i < SERVO_NUM; i++) {
-        dueFlashStorage.write(256 + poseCnt * SERVO_NUM * 2 + 2 * i, (uint8_t)(storeData[i] / 128));
-        dueFlashStorage.write(256 + poseCnt * SERVO_NUM * 2 + 2 * i + 1, (uint8_t)(storeData[i] % 128));
+        Storage.write(256 + poseCnt * SERVO_NUM * 2 + 2 * i, (uint8_t)(storeData[i] / 128));
+        Storage.write(256 + poseCnt * SERVO_NUM * 2 + 2 * i + 1, (uint8_t)(storeData[i] % 128));
       }
 
     } // END- add a normal pose
@@ -1116,14 +1146,14 @@ void Arm7Bot::softwareSystem() {
       posD[6] = 0;
 
       if (poseCnt < 254) poseCnt++; ARMPORT.print("AddGrabPose: "); ARMPORT.println(poseCnt);
-      dueFlashStorage.write(256, (uint8_t)poseCnt);
+      Storage.write(256, (uint8_t)poseCnt);
       int storeData[SERVO_NUM];
       for (int i = 0; i < SERVO_NUM; i++) {
         storeData[i] = (int)(posD[i] * 50 / 9);
       }
       for (int i = 0; i < SERVO_NUM; i++) {
-        dueFlashStorage.write(256 + poseCnt * SERVO_NUM * 2 + 2 * i, (uint8_t)(storeData[i] / 128));
-        dueFlashStorage.write(256 + poseCnt * SERVO_NUM * 2 + 2 * i + 1, (uint8_t)(storeData[i] % 128));
+        Storage.write(256 + poseCnt * SERVO_NUM * 2 + 2 * i, (uint8_t)(storeData[i] / 128));
+        Storage.write(256 + poseCnt * SERVO_NUM * 2 + 2 * i + 1, (uint8_t)(storeData[i] % 128));
       }
 
       digitalWrite(valve_pin, LOW);
@@ -1149,15 +1179,15 @@ void Arm7Bot::softwareSystem() {
       posD[6] = 75;
 
       if (poseCnt < 254) poseCnt++; ARMPORT.print("AddReleasePose: "); ARMPORT.println(poseCnt);
-      dueFlashStorage.write(256, (uint8_t)poseCnt);
+      Storage.write(256, (uint8_t)poseCnt);
       // store pose data
       int storeData[SERVO_NUM];
       for (int i = 0; i < SERVO_NUM; i++) {
         storeData[i] = (int)(posD[i] * 50 / 9);
       }
       for (int i = 0; i < SERVO_NUM; i++) {
-        dueFlashStorage.write(256 + poseCnt * SERVO_NUM * 2 + 2 * i, (uint8_t)(storeData[i] / 128));
-        dueFlashStorage.write(256 + poseCnt * SERVO_NUM * 2 + 2 * i + 1, (uint8_t)(storeData[i] % 128));
+        Storage.write(256 + poseCnt * SERVO_NUM * 2 + 2 * i, (uint8_t)(storeData[i] / 128));
+        Storage.write(256 + poseCnt * SERVO_NUM * 2 + 2 * i + 1, (uint8_t)(storeData[i] % 128));
       }
 
       digitalWrite(valve_pin, HIGH);
@@ -1171,7 +1201,7 @@ void Arm7Bot::softwareSystem() {
       clearPoseFlag = false; ARMPORT.println("Clear Poses");
       isReleaseFlag = false;
       poseCnt = 0;
-      dueFlashStorage.write(256, (uint8_t)poseCnt);
+      Storage.write(256, (uint8_t)poseCnt);
     }
 
   }
@@ -1191,8 +1221,8 @@ void Arm7Bot::softwareSystem() {
         //read stored datas
         int storeData[SERVO_NUM];
         for (int i = 0; i < SERVO_NUM; i++) {
-          storeData[i] = (int)dueFlashStorage.read(256 + playCnt * SERVO_NUM * 2 + 2 * i) * 128 +
-                         (int)dueFlashStorage.read(256 + playCnt * SERVO_NUM * 2 + 2 * i + 1);
+          storeData[i] = (int)Storage.read(256 + playCnt * SERVO_NUM * 2 + 2 * i) * 128 +
+                         (int)Storage.read(256 + playCnt * SERVO_NUM * 2 + 2 * i + 1);
         }
 
         for (int i = 0; i < SERVO_NUM; i++) {
